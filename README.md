@@ -1,5 +1,5 @@
-# Bad Poll
+# Bad Raffle
 
 ## Developed by Bad Fox Motorcycle Club
 
-[poll.badfoxmc.com](https://poll.badfoxmc.com)
+[raffle.badfoxmc.com](https://raffle.badfoxmc.com)

@@ -12,8 +12,3 @@ export const HOURS = 'Hours'
 export const DAYS = 'Days'
 export const WEEKS = 'Weeks'
 export const MONTHS = 'Months'
-
-export const IMAGE = 'Image'
-export const VIDEO = 'Video'
-export const GIF = 'Gif'
-export const MUSIC = 'Music'
