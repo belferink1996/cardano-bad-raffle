@@ -8,6 +8,7 @@ import { formatTokenFromChainToHuman } from '../../functions/formatTokenAmount'
 import ConnectWallet from '../ConnectWallet'
 import Settings from './Settings'
 import TranscriptsViewer from '../TranscriptsViewer'
+import PastRaffles from '../raffles/PastRaffles'
 import { RAFFLES_DB_PATH } from '../../constants'
 import type { BadApiBaseToken, BadApiTokenOwners } from '../../utils/badApi'
 import type { FetchedTimestampResponse } from '../../pages/api/timestamp'
@@ -107,7 +108,11 @@ const TheTool = () => {
   }, [loadWallet])
 
   const clickPublish = useCallback(async () => {
-    return
+    if (settings?.raffleSettings.amount) {
+      toast.error('In development...')
+      return
+    }
+
     if (!settings) return
 
     setLoading(true)
@@ -160,7 +165,7 @@ const TheTool = () => {
       if (fungibleTokens.length) {
         if (
           window.confirm(
-            'Detected Policy ID(s) with Fungible BadApiBaseToken(s).\n\nFungible Tokens cannot be "scanned" when the holder connects to vote, because they are not "unique" assets.\n\nThe solution would be running a snapshot. Do you want to run a snapshot now?\n\nBy clicking "cancel", the raffle will not be published, allowing you to make changes.'
+            'Detected Policy ID(s) with Fungible BadApiBaseToken(s).\n\nFungible Tokens cannot be "scanned" when the holder connects, because they are not "unique" assets.\n\nThe solution would be running a snapshot. Do you want to run a snapshot now?\n\nBy clicking "cancel", the raffle will not be published, allowing you to make changes.'
           )
         ) {
           const holders: {
@@ -243,7 +248,7 @@ const TheTool = () => {
                 return {
                   stakeKey,
                   points,
-                  hasVoted: false,
+                  hasEntered: false,
                 }
               })
               .sort((a, b) => b.points - a.points)
@@ -256,40 +261,34 @@ const TheTool = () => {
         }
       }
 
-      // const {
-      //   data: { endAt },
-      // } = await axios.get<FetchedTimestampResponse>(
-      //   `/api/timestamp?endPeriod=${settings?.raffleSettings.endAt.period}&endAmount=${settings?.raffleSettings.endAt.amount}`
-      // )
+      const {
+        data: { endAt },
+      } = await axios.get<FetchedTimestampResponse>(
+        `/api/timestamp?endPeriod=${settings?.raffleSettings.endAt.period}&endAmount=${settings?.raffleSettings.endAt.amount}`
+      )
 
       addTranscript('Publishing raffle', 'This may take a moment...')
 
-      // const collection = firestore.collection(RAFFLES_DB_PATH)
-      // const votes: Record<string, number> = {}
+      const collection = firestore.collection(RAFFLES_DB_PATH)
 
-      // settings?.raffleSettings.options.forEach(({ serial }) => {
-      //   votes[`vote_${serial}`] = 0
-      // })
+      const res = await collection.add({
+        stakeKey: connectedStakeKey,
 
-      // const res = await collection.add({
-      //   stakeKey: connectedStakeKey,
-      //   allowPublicView: settings?.raffleSettings.allowPublicView,
-      //   endAt,
-      //   description: settings?.raffleSettings.description || '',
-      //   question: settings?.raffleSettings.question,
-      //   options: settings?.raffleSettings.options,
-      //   ...votes,
-      //   delegatorSettings,
-      //   blacklistSettings,
-      //   holderSettings,
-      //   fungibleTokenHolders,
-      //   usedUnits: [],
-      // })
+        ...settings.raffleSettings,
+        endAt,
 
-      // const url = `${window.location.origin}/raffles/${res.id}`
+        delegatorSettings,
+        blacklistSettings,
+        holderSettings,
+        fungibleTokenHolders,
+        usedUnits: [],
+        enteredKeys: [],
+      })
 
-      // addTranscript('Published! Share this link with your community:', url)
-      // setRaffleUrl(url)
+      const url = `${window.location.origin}/raffles/${res.id}`
+
+      addTranscript('Published! Share this link with your community:', url)
+      setRaffleUrl(url)
       setRafflePublished(true)
       toast.dismiss()
       toast.success('Published!')
@@ -359,7 +358,9 @@ const TheTool = () => {
         </div>
       </div>
 
-      {showPastRaffles ? null : ( // <PastRaffles stakeKey={connectedStakeKey} addTranscript={addTranscript} />
+      {showPastRaffles ? (
+        <PastRaffles stakeKey={connectedStakeKey} addTranscript={addTranscript} />
+      ) : (
         <Settings
           disabled={!connected || hasNoKey || rafflePublished || loading}
           defaultSettings={settings}

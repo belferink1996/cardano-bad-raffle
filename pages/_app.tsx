@@ -5,6 +5,7 @@ import '../styles/globals.css'
 import 'animate.css'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
+import { WalletProvider } from '../contexts/WalletContext'
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -31,7 +32,9 @@ function MyApp({ Component, pageProps }: AppProps) {
 
       <Header />
       <main className='w-screen min-h-screen bg-black bg-opacity-50'>
-        <Component {...pageProps} />
+        <WalletProvider>
+          <Component {...pageProps} />
+        </WalletProvider>
       </main>
       <Footer />
     </Fragment>

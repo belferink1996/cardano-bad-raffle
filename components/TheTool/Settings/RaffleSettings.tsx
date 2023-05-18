@@ -2,6 +2,8 @@ import { Fragment, useEffect, useState } from 'react'
 import { ChevronDownIcon, CursorArrowRaysIcon } from '@heroicons/react/24/solid'
 import { MINUTES, DAYS, HOURS, MONTHS, WEEKS } from '../../../constants'
 import Modal from '../../layout/Modal'
+import TokenExplorer, { HeldToken } from '../../TokenExplorer'
+import { formatTokenFromChainToHuman, formatTokenFromHumanToChain } from '../../../functions/formatTokenAmount'
 
 export type EndAtPeriod = typeof MINUTES | typeof HOURS | typeof DAYS | typeof WEEKS | typeof MONTHS
 
@@ -49,6 +51,8 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
   const [raffleSettings, setRaffleSettings] = useState<RaffleSettingsType>(defaultSettings || INIT_RAFFLE_SETTINGS)
   const [openPeriodSelection, setOpenPeriodSelection] = useState(false)
   const [openTokenSelection, setOpenTokenSelection] = useState(false)
+  const [selectedToken, setSelectedToken] = useState<HeldToken | null>(null)
+  const decimals = selectedToken?.t.tokenAmount.decimals || 0
 
   useEffect(() => {
     callback(raffleSettings)
@@ -110,15 +114,54 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
       </div>
 
       {raffleSettings['isToken'] ? (
-        <button
-          type='button'
-          disabled={disabled}
-          onClick={() => setOpenTokenSelection((prev) => !prev)}
-          className='w-full my-1 p-3 flex items-center justify-center disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-lg bg-gray-900 hover:bg-gray-700 text-sm hover:text-white border border-gray-700 hover:border-gray-500'
-        >
-          <CursorArrowRaysIcon className='w-6 h-6 mr-2' />
-          Select Token
-        </button>
+        <Fragment>
+          <div className='flex'>
+            <input
+              placeholder='Amount'
+              disabled={disabled}
+              value={formatTokenFromChainToHuman(raffleSettings.amount, decimals) || ''}
+              onChange={(e) =>
+                setRaffleSettings((prev) => {
+                  const payload = { ...prev }
+                  const v = Number(e.target.value)
+
+                  if (isNaN(v) || v < 0) {
+                    return payload
+                  }
+
+                  const ownedAmount = formatTokenFromHumanToChain(selectedToken?.o || 0, decimals)
+                  const selectedAmount = formatTokenFromHumanToChain(v, decimals)
+
+                  if (selectedAmount > ownedAmount) {
+                    payload.amount = ownedAmount
+                  } else {
+                    payload.amount = selectedAmount
+                  }
+
+                  return payload
+                })
+              }
+              className='w-[30%] mr-1 my-0.5 p-3 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 disabled:placeholder:text-gray-700 rounded-lg bg-gray-900 border border-gray-700 text-sm hover:bg-gray-700 hover:border-gray-500 hover:text-white hover:placeholder:text-white'
+            />
+            <button
+              type='button'
+              disabled={disabled}
+              onClick={() => setOpenTokenSelection((prev) => !prev)}
+              className='w-full my-0.5 p-3 flex items-center justify-center disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-lg bg-gray-900 hover:bg-gray-700 text-sm hover:text-white border border-gray-700 hover:border-gray-500'
+            >
+              <CursorArrowRaysIcon className='w-6 h-6 mr-2' />
+              Select Token
+            </button>
+          </div>
+
+          {selectedToken ? (
+            <img
+              src={selectedToken.t.image.url}
+              alt=''
+              className='w-full object-contain rounded-lg border border-gray-700'
+            />
+          ) : null}
+        </Fragment>
       ) : (
         <Fragment>
           <div className='flex'>
@@ -258,7 +301,29 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
       </div>
 
       <Modal open={openTokenSelection} onClose={() => setOpenTokenSelection(false)}>
-        <div>TODO</div>
+        {openTokenSelection ? (
+          <TokenExplorer
+            callback={(payload) => {
+              setSelectedToken(payload)
+              setRaffleSettings((prev) => ({
+                ...prev,
+                amount: 0,
+                token: {
+                  tokenId: payload.t.tokenId,
+                  tokenImage: payload.t.image.url,
+                  tokenName:
+                    payload.t.tokenName?.ticker ||
+                    payload.t.tokenName?.display ||
+                    payload.t.tokenName?.onChain ||
+                    '',
+                },
+              }))
+              setOpenTokenSelection(false)
+            }}
+          />
+        ) : (
+          <div />
+        )}
       </Modal>
     </div>
   )

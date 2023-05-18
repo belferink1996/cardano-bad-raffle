@@ -32,7 +32,7 @@ export interface HolderSettingsType {
 export interface FungibleTokenHolder {
   stakeKey: string
   points: number
-  hasVoted: boolean
+  hasEntered: boolean
 }
 
 interface HolderSettingsProps {
