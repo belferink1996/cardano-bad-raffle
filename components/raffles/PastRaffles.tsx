@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
-import { firestore } from '../../utils/firebase'
+import { firestore, storage } from '../../utils/firebase'
 import Modal from '../layout/Modal'
 import RaffleViewer from './RaffleViewer'
 import RaffleListItem from './RaffleListItem'
@@ -74,14 +74,22 @@ const PastRaffles = (props: PastRafflesProps) => {
   )
 
   const clickDelete = useCallback(
-    async (pollId: string) => {
+    async (raffleId: string) => {
+      const raffle = raffles.find((raffle) => raffle.id === raffleId) as Raffle
+      const mediaUrl = raffle?.other?.image
+
+      if (mediaUrl) {
+        const fileId = mediaUrl.split('?')[0].split('%2Fbad-raffle%2F')[1]
+        await storage.ref(`/tools/bad-raffle/${fileId}`).delete()
+      }
+
       const collection = firestore.collection(RAFFLES_DB_PATH)
-      await collection.doc(pollId).delete()
+      await collection.doc(raffleId).delete()
 
       setSelectedRaffle(null)
       await getAndSetRaffles()
     },
-    [getAndSetRaffles]
+    [raffles, getAndSetRaffles]
   )
 
   if (loading) {
@@ -90,18 +98,23 @@ const PastRaffles = (props: PastRafflesProps) => {
 
   return (
     <div>
-      {raffles.length
-        ? raffles.map((raffle) => (
-            <RaffleListItem
-              key={`raffle-${raffle.id}`}
-              onClick={() => setSelectedRaffle(raffle)}
-              active={raffle.active}
-              endAt={raffle.endAt}
-              title={raffle.isToken ? raffle.token.tokenName : raffle.title}
-              className='m-1 p-4 text-sm bg-gray-900 bg-opacity-50 hover:bg-opacity-50 rounded-xl border border-gray-700 select-none cursor-pointer hover:bg-gray-700 hover:text-gray-200 hover:border hover:border-gray-500'
-            />
-          ))
-        : 'No previous raffle... click the above ☝️ to create your first'}
+      <div className='flex items-start justify-center flex-wrap'>
+        {raffles.length
+          ? raffles.map((raffle) => (
+              <RaffleListItem
+                key={`raffle-${raffle.id}`}
+                onClick={() => setSelectedRaffle(raffle)}
+                active={raffle.active}
+                endAt={raffle.endAt}
+                title={`${raffle.amount.toLocaleString()}x ${
+                  raffle.isToken ? raffle.token.tokenName : raffle.other.title
+                }`}
+                image={raffle.isToken ? raffle.token.tokenImage : raffle.other.image}
+                isToken={raffle.isToken}
+              />
+            ))
+          : 'No previous raffle... click the above ☝️ to create your first'}
+      </div>
 
       <Modal
         title={`Raffle: ${selectedRaffle?.id}`}

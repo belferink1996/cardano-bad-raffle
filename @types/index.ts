@@ -17,8 +17,11 @@ export interface Raffle {
     tokenName: string
     tokenImage: string
   }
-  title: string
-  description: string
+  other: {
+    title: string
+    description: string
+    image: string
+  }
   endAt: number
 
   delegatorSettings: DelegatorSettingsType

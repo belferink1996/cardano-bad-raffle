@@ -32,7 +32,7 @@ const Page: NextPage = (props: { raffles?: Raffle[] }) => {
   const raffles = useMemo(() => props.raffles || [], [props.raffles])
 
   return (
-    <div className='flex flex-col items-center'>
+    <div className='flex items-start justify-center flex-wrap'>
       {!raffles.length
         ? 'No raffles...'
         : raffles.map((raffle) => (
@@ -41,8 +41,11 @@ const Page: NextPage = (props: { raffles?: Raffle[] }) => {
               navToPage={`/raffles/${raffle.id}`}
               active={raffle.active}
               endAt={raffle.endAt}
-              title={raffle.isToken ? raffle.token.tokenName : raffle.title}
-              className='m-1 p-4 text-sm bg-gray-900 bg-opacity-50 hover:bg-opacity-50 rounded-xl border border-gray-700 select-none cursor-pointer hover:bg-gray-700 hover:text-gray-200 hover:border hover:border-gray-500'
+              title={`${raffle.amount.toLocaleString()}x ${
+                raffle.isToken ? raffle.token.tokenName : raffle.other.title
+              }`}
+              image={raffle.isToken ? raffle.token.tokenImage : raffle.other.image}
+              isToken={raffle.isToken}
             />
           ))}
     </div>

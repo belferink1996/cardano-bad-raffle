@@ -62,68 +62,46 @@ const RaffleViewer = (props: RaffleViewerProps) => {
 
   return (
     <div>
-      {raffle.description ? (
-        <p className='w-full mb-2 py-2 px-4 text-sm bg-gray-900 bg-opacity-50 rounded-xl border border-gray-700'>
-          {raffle.description.split('\n').map((str, idx) => (
-            <Fragment key={`str-${idx}-${str}`}>
-              {str}
-              <br />
-            </Fragment>
-          ))}
-        </p>
-      ) : null}
+      {raffle.isToken ? (
+        <div className='w-full py-2 px-4 text-sm bg-gray-900 bg-opacity-50 rounded-xl border border-gray-700'>
+          <p className='w-full mt-2 text-lg text-gray-200'>
+            {raffle.amount.toLocaleString()}&times; Token{raffle.amount > 1 ? 's' : ''}{' '}
+          </p>
 
-      <div className='w-full py-2 px-4 text-sm bg-gray-900 bg-opacity-50 rounded-xl border border-gray-700'>
-        <p className='my-2 mb-2 text-gray-200'>{raffle.isToken ? raffle.token.tokenName : raffle.title}</p>
+          <p className='w-full mb-4 text-sm'>{raffle.token.tokenName}</p>
 
-        {/* {raffle.options.map((obj) => {
-          const isActive = raffle.active
-          const isWinner = pointAllocation['winnerSerialNumber'] === obj.serial
-          const percentValue = pointAllocation.allocation[`vote_${obj.serial}`]?.percent || 0
-          const pointValue = pointAllocation.allocation[`vote_${obj.serial}`]?.points || 0
+          <img
+            src={raffle.token.tokenImage}
+            alt=''
+            className='w-full object-contain rounded-lg border border-gray-700'
+          />
+        </div>
+      ) : (
+        <div className='w-full py-2 px-4 text-sm bg-gray-900 bg-opacity-50 rounded-xl border border-gray-700'>
+          <p className='w-full mt-2 text-lg text-gray-200'>
+            {raffle.amount.toLocaleString()}&times; {raffle.other.title}
+          </p>
 
-          return (
-            <Fragment key={`read-option-${obj.serial}`}>
-              <div className='w-full h-0.5 my-2 bg-gray-800 rounded-full' />
+          {raffle.other.description ? (
+            <p className='w-full mb-4 text-sm'>
+              {raffle.other.description.split('\n').map((str, idx) => (
+                <Fragment key={`str-${idx}-${str}`}>
+                  {str}
+                  <br />
+                </Fragment>
+              ))}
+            </p>
+          ) : null}
 
-              <p className={isActive ? '' : isWinner ? 'text-green-200 font-bold' : 'text-red-200'}>
-                <span className='text-gray-200 font-bold'>{obj.serial}.</span>{' '}
-                {obj.isMedia ? (
-                  obj.mediaType === 'Image' || obj.mediaType === 'Gif' ? (
-                    <img src={obj.mediaUrl} alt='' className='max-w-[400px] max-h-[300px] mx-auto' />
-                  ) : obj.mediaType === 'Video' ? (
-                    <video src={obj.mediaUrl} controls className='max-w-[400px] max-h-[300px] mx-auto' />
-                  ) : obj.mediaType === 'Music' ? (
-                    <audio src={obj.mediaUrl} controls className='mx-auto' />
-                  ) : null
-                ) : (
-                  obj.answer
-                )}
-              </p>
-
-              {isActive ? null : (
-                <div className='w-full h-fit bg-transparent rounded-full'>
-                  <div
-                    className={
-                      'leading-4 rounded-full bg-opacity-50 ' + (isWinner ? 'bg-green-600' : 'bg-red-600')
-                    }
-                    style={{ width: `${percentValue}%` }}
-                  >
-                    <span
-                      className={
-                        'ml-2 whitespace-nowrap text-[11px] ' + (isWinner ? 'text-green-200' : 'text-red-200')
-                      }
-                    >
-                      {percentValue}%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;({pointValue}&nbsp;/&nbsp;
-                      {pointAllocation.totalPoints}&nbsp;points)
-                    </span>
-                  </div>
-                </div>
-              )}
-            </Fragment>
-          )
-        })} */}
-      </div>
+          {raffle.other.image ? (
+            <img
+              src={raffle.other.image}
+              alt=''
+              className='w-full object-contain rounded-lg border border-gray-700'
+            />
+          ) : null}
+        </div>
+      )}
 
       <table className={'mx-auto mt-2 text-center ' + (raffle.active ? 'text-gray-400' : 'text-gray-700')}>
         <tbody>

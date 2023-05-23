@@ -6,6 +6,7 @@ import 'animate.css'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { WalletProvider } from '../contexts/WalletContext'
+import { Toaster } from 'react-hot-toast'
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -30,6 +31,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Bad Raffle | Raffle Tool</title>
       </Head>
 
+      <Toaster />
       <Header />
       <main className='w-screen min-h-screen bg-black bg-opacity-50'>
         <WalletProvider>

@@ -60,7 +60,7 @@ const TheTool = () => {
         settings.holderSettings.length &&
         settings.raffleSettings &&
         ((settings.raffleSettings.isToken && settings.raffleSettings.token.tokenId) ||
-          (!settings.raffleSettings.isToken && settings.raffleSettings.title)) &&
+          (!settings.raffleSettings.isToken && settings.raffleSettings.other.title)) &&
         settings.raffleSettings.amount &&
         settings.raffleSettings.endAt.amount &&
         settings.raffleSettings.endAt.period
@@ -108,11 +108,6 @@ const TheTool = () => {
   }, [loadWallet])
 
   const clickPublish = useCallback(async () => {
-    if (settings?.raffleSettings.amount) {
-      toast.error('In development...')
-      return
-    }
-
     if (!settings) return
 
     setLoading(true)
@@ -282,7 +277,6 @@ const TheTool = () => {
         holderSettings,
         fungibleTokenHolders,
         usedUnits: [],
-        enteredKeys: [],
       })
 
       const url = `${window.location.origin}/raffles/${res.id}`

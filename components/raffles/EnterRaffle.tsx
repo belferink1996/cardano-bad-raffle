@@ -1,17 +1,17 @@
 'use client'
 import { Fragment, useCallback, useEffect, useState } from 'react'
-// import axios from 'axios'
+import axios from 'axios'
 import { toast } from 'react-hot-toast'
 import BadApi from '../../utils/badApi'
-// import { firebase, firestore } from '../../utils/firebase'
+import { firebase, firestore } from '../../utils/firebase'
 import { useWallet } from '../../contexts/WalletContext'
 import ConnectWallet from '../ConnectWallet'
 import TranscriptsViewer from '../TranscriptsViewer'
 import RaffleViewer from '../../components/raffles/RaffleViewer'
-// import { RAFFLES_DB_PATH } from '../../constants'
+import { RAFFLES_DB_PATH } from '../../constants'
 import type { Raffle } from '../../@types'
 import type { BadApiRankedToken } from '../../utils/badApi'
-// import type { FetchedTimestampResponse } from '../../pages/api/timestamp'
+import type { FetchedTimestampResponse } from '../../pages/api/timestamp'
 import type { Transcript } from '../TranscriptsViewer'
 import type { HolderSettingsType } from '../TheTool/Settings/HolderSettings'
 
@@ -41,7 +41,7 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
   const [loading, setLoading] = useState(false)
   const [raffleActive, setRaffleActive] = useState(raffle.active || false)
   const [holderEligible, setHolderEligible] = useState(false)
-  const [holderVote, setHolderVote] = useState<{
+  const [holderPoints, setHolderPoints] = useState<{
     stakeKey: string
     points: number
     withFungible: boolean
@@ -190,7 +190,7 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
       }
 
       addTranscript(`You have ${votePoints} total raffle points`, 'Now you can enter the raffle 👇')
-      setHolderVote({
+      setHolderPoints({
         stakeKey,
         points: votePoints,
         withFungible: countedFungiblePoints,
@@ -255,83 +255,71 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raffleActive, connected, loadWallet, isSdkWrapped, loadWalletFromSdk])
 
-  // const castVote = useCallback(
-  //   async (serialNumber: number) => {
-  //     if (
-  //       window.confirm(
-  //         `Are you sure you want to cast ${holderVote.points} points to option #${serialNumber}?\nCasted points are permanent!\nEvery asset can only be used once!`
-  //       )
-  //     ) {
-  //       setLoading(true)
-  //       toast.loading('Processing...')
+  const enterRaffle = useCallback(async () => {
+    if (raffle && holderPoints.points) {
+      try {
+        setLoading(true)
+        toast.loading('Processing...')
+        addTranscript('Processing voting points', 'This may take a moment...')
 
-  //       if (raffle && holderVote.points) {
-  //         try {
-  //           addTranscript('Processing voting points', 'This may take a moment...')
+        const {
+          data: { now },
+        } = await axios.get<FetchedTimestampResponse>(`/api/timestamp`)
 
-  //           const {
-  //             data: { now },
-  //           } = await axios.get<FetchedTimestampResponse>(`/api/timestamp`)
+        if (now >= raffle.endAt) {
+          setRaffleActive(false)
+          addTranscript('Raffle expired (inactive)')
+          toast.dismiss()
+          return
+        }
 
-  //           if (now >= raffle.endAt) {
-  //             setRaffleActive(false)
-  //             addTranscript('Raffle expired (inactive)')
-  //             toast.dismiss()
-  //             return
-  //           }
+        const collection = firestore.collection(RAFFLES_DB_PATH)
 
-  //           const collection = firestore.collection(RAFFLES_DB_PATH)
+        const { FieldValue } = firebase.firestore
 
-  //           const { FieldValue } = firebase.firestore
-  //           const incrementPoints = FieldValue.increment(holderVote.points)
-  //           const arrayUnionUnits = FieldValue.arrayUnion(...holderVote.units)
+        const incrementPoints = FieldValue.increment(holderPoints.points)
+        const arrayUnionUnits = FieldValue.arrayUnion(...holderPoints.units)
 
-  //           const foundFungibleHolder = raffle.fungibleTokenHolders?.find(
-  //             (obj) => obj.stakeKey === holderVote.stakeKey
-  //           )
+        await collection.doc(raffle?.id).update({
+          [`entry_${holderPoints.stakeKey}`]: incrementPoints,
+          usedUnits: arrayUnionUnits,
+        })
 
-  //           await collection.doc(raffle?.id).update({
-  //             [`vote_${serialNumber}`]: incrementPoints,
-  //             usedUnits: arrayUnionUnits,
-  //           })
+        if (holderPoints.withFungible) {
+          const foundFungibleHolder = raffle.fungibleTokenHolders?.find(
+            (obj) => obj.stakeKey === holderPoints.stakeKey
+          )
 
-  //           if (holderVote.withFungible) {
-  //             await collection.doc(raffle?.id).update({
-  //               fungibleTokenHolders: FieldValue.arrayRemove(foundFungibleHolder),
-  //             })
-  //             await collection.doc(raffle?.id).update({
-  //               fungibleTokenHolders: FieldValue.arrayUnion({ ...foundFungibleHolder, hasVoted: true }),
-  //             })
-  //           }
+          await collection.doc(raffle?.id).update({
+            fungibleTokenHolders: FieldValue.arrayRemove(foundFungibleHolder),
+          })
+          await collection.doc(raffle?.id).update({
+            fungibleTokenHolders: FieldValue.arrayUnion({ ...foundFungibleHolder, hasVoted: true }),
+          })
+        }
 
-  //           addTranscript(
-  //             'Success! You can leave the raffle 👍',
-  //             `Casted ${holderVote.points} points to option #${serialNumber}`
-  //           )
-  //           setHolderVote({
-  //             stakeKey: '',
-  //             points: 0,
-  //             withFungible: false,
-  //             units: [],
-  //           })
+        addTranscript('Success! You can leave the raffle 👍', `Entered with ${holderPoints.points} points`)
+        setHolderPoints({
+          stakeKey: '',
+          points: 0,
+          withFungible: false,
+          units: [],
+        })
 
-  //           toast.dismiss()
-  //           toast.success('Voted!')
-  //         } catch (error: any) {
-  //           console.error(error)
-  //           const errMsg = error?.response?.data || error?.message || error?.toString() || 'UNKNOWN ERROR'
+        toast.dismiss()
+        toast.success('Entered!')
+      } catch (error: any) {
+        console.error(error)
+        const errMsg = error?.response?.data || error?.message || error?.toString() || 'UNKNOWN ERROR'
 
-  //           toast.dismiss()
-  //           toast.error('Woopsies!')
-  //           addTranscript('ERROR', errMsg)
-  //         }
-  //       }
-
-  //       setLoading(false)
-  //     }
-  //   },
-  //   [raffle, holderVote]
-  // )
+        toast.dismiss()
+        toast.error('Woopsies!')
+        addTranscript('ERROR', errMsg)
+      } finally {
+        setLoading(false)
+      }
+    }
+  }, [raffle, holderPoints])
 
   return (
     <div className='w-[80vw] md:w-[690px] mx-auto'>
@@ -348,27 +336,24 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
       <RaffleViewer raffle={raffle} callbackTimerExpired={() => raffleExpired()} />
 
       <div className='w-full mt-2 flex flex-wrap items-center justify-evenly'>
-        {/* {raffle.options.map((obj) => (
-              <button
-                key={`click-option-${obj.serial}`}
-                type='button'
-                disabled={
-                  (!isSdkWrapped && !connected) ||
-                  (isSdkWrapped && !sdkVoterStakeKey) ||
-                  !raffleActive ||
-                  !holderVote.points ||
-                  loading
-                }
-                onClick={() => castVote(obj.serial)}
-                className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
-              >
-                Vote #{obj.serial}
-              </button>
-            ))} */}
+        <button
+          type='button'
+          disabled={
+            (!isSdkWrapped && !connected) ||
+            (isSdkWrapped && !sdkVoterStakeKey) ||
+            !raffleActive ||
+            !holderPoints.points ||
+            loading
+          }
+          onClick={() => enterRaffle()}
+          className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+        >
+          Enter Raffle
+        </button>
       </div>
 
       <div className='mt-4 flex flex-col items-center justify-center'>
-        {/* <h6>Who can vote?</h6>
+        <h6>Who can enter?</h6>
 
         {raffle.holderSettings.map((setting) => (
           <div key={`holderSetting-${setting.policyId}`} className='text-xs my-2'>
@@ -390,7 +375,7 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
                 ))
               : null}
           </div>
-        ))} */}
+        ))}
       </div>
     </div>
   )

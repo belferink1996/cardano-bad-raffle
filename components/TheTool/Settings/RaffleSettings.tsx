@@ -1,9 +1,12 @@
 import { Fragment, useEffect, useState } from 'react'
-import { ChevronDownIcon, CursorArrowRaysIcon } from '@heroicons/react/24/solid'
-import { MINUTES, DAYS, HOURS, MONTHS, WEEKS } from '../../../constants'
+import { v4 as uuidv4 } from 'uuid'
+import { toast } from 'react-hot-toast'
+import { ArrowUpTrayIcon, ChevronDownIcon, CursorArrowRaysIcon } from '@heroicons/react/24/solid'
+import { firebase, storage } from '../../../utils/firebase'
+import { formatTokenFromChainToHuman, formatTokenFromHumanToChain } from '../../../functions/formatTokenAmount'
 import Modal from '../../layout/Modal'
 import TokenExplorer, { HeldToken } from '../../TokenExplorer'
-import { formatTokenFromChainToHuman, formatTokenFromHumanToChain } from '../../../functions/formatTokenAmount'
+import { MINUTES, DAYS, HOURS, MONTHS, WEEKS } from '../../../constants'
 
 export type EndAtPeriod = typeof MINUTES | typeof HOURS | typeof DAYS | typeof WEEKS | typeof MONTHS
 
@@ -14,8 +17,11 @@ export interface RaffleSettingsType {
     tokenName: string
     tokenImage: string
   }
-  title: string
-  description: string
+  other: {
+    title: string
+    description: string
+    image: string
+  }
   amount: number
   endAt: {
     amount: number
@@ -36,8 +42,11 @@ export const INIT_RAFFLE_SETTINGS: RaffleSettingsType = {
     tokenName: '',
     tokenImage: '',
   },
-  title: '',
-  description: '',
+  other: {
+    title: '',
+    description: '',
+    image: '',
+  },
   amount: 0,
   endAt: {
     amount: 0,
@@ -58,6 +67,54 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
     callback(raffleSettings)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raffleSettings])
+
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  const getFileLink = async (fileId: string) => {
+    const refList = await storage.ref('/tools/bad-raffle').listAll()
+
+    for await (const item of refList.items) {
+      if (item.name === fileId) return await item.getDownloadURL()
+    }
+  }
+
+  const uploadFile = (file: File) =>
+    new Promise((resolve) => {
+      toast.loading('Uploading...')
+
+      const sizeLimit = 1000000 // 1mb
+      if (file.size > sizeLimit) {
+        const msg = 'File size is limited to 1mb'
+        toast.dismiss()
+        toast.error(msg)
+        return resolve('')
+      }
+
+      const fileId = uuidv4()
+      const uploadTask = storage.ref(`/tools/bad-raffle/${fileId}`).put(file, {
+        contentType: file.type,
+      })
+
+      uploadTask.on(
+        firebase.storage.TaskEvent.STATE_CHANGED,
+        (snapshot) => {
+          const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          setProgress(percent)
+        },
+        (error) => {
+          toast.dismiss()
+          toast.error(error.message)
+          resolve('')
+        },
+
+        () => {
+          toast.dismiss()
+          toast.success('Uploaded!')
+          getFileLink(fileId).then((fileUrl) => resolve(fileUrl as string))
+        }
+      )
+    })
 
   return (
     <div className='w-full mb-4'>
@@ -187,12 +244,12 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
             <input
               placeholder='Title'
               disabled={disabled}
-              value={raffleSettings.title}
+              value={raffleSettings.other.title}
               onChange={(e) =>
                 setRaffleSettings((prev) => {
                   const payload = { ...prev }
 
-                  payload.title = e.target.value
+                  payload.other.title = e.target.value
 
                   return payload
                 })
@@ -204,18 +261,76 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
           <textarea
             placeholder='Description (optional)'
             disabled={disabled}
-            value={raffleSettings.description}
+            value={raffleSettings.other.description}
             onChange={(e) =>
               setRaffleSettings((prev) => {
                 const payload = { ...prev }
 
-                payload.description = e.target.value
+                payload.other.description = e.target.value
 
                 return payload
               })
             }
             className='w-full my-0.5 p-3 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 disabled:placeholder:text-gray-700 rounded-lg bg-gray-900 border border-gray-700 text-sm hover:bg-gray-700 hover:border-gray-500 hover:text-white hover:placeholder:text-white'
           />
+
+          <div className='my-0.5 w-full flex items-center justify-between'>
+            {uploading ? (
+              <div className='w-full h-fit mt-2 bg-transparent rounded-full'>
+                <div
+                  className='leading-4 rounded-full bg-opacity-70 bg-blue-500'
+                  style={{ width: `${progress}%` }}
+                >
+                  <span className='ml-2 whitespace-nowrap text-[11px] text-blue-200'>{progress.toFixed(0)}%</span>
+                </div>
+              </div>
+            ) : raffleSettings.other.image ? (
+              <img
+                src={raffleSettings.other.image}
+                alt=''
+                className='w-full object-contain rounded-lg border border-gray-700'
+              />
+            ) : (
+              <button
+                type='button'
+                onClick={() => {}}
+                disabled={disabled || uploading}
+                className='relative cursor-pointer w-full p-3 flex items-center disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-lg bg-gray-900 hover:bg-gray-700 text-sm hover:text-white border border-gray-700 hover:border-gray-500'
+              >
+                <input
+                  type='file'
+                  accept='.jpg,.jpeg,.png,.webp'
+                  multiple={false}
+                  disabled={disabled || uploading}
+                  onChange={async (e) => {
+                    setUploading(true)
+
+                    const file = (e.target.files as FileList)[0]
+                    if (!file) {
+                      setUploading(false)
+                      return
+                    }
+
+                    const mediaUrl = (await uploadFile(file)) as string
+                    if (mediaUrl) {
+                      setRaffleSettings((prev) => {
+                        const payload = { ...prev }
+
+                        payload.other.image = mediaUrl
+
+                        return payload
+                      })
+                    }
+
+                    setUploading(false)
+                  }}
+                  className='absolute cursor-pointer w-full h-full opacity-0'
+                />
+                <ArrowUpTrayIcon className='w-5 h-5 mr-2' />
+                Upload File
+              </button>
+            )}
+          </div>
         </Fragment>
       )}
 
