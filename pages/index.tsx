@@ -8,7 +8,10 @@ const About = () => {
   return (
     <div className='my-4 mx-2 md:mx-10 max-w-2xl lg:max-w-lg text-gray-300'>
       <h2 className='text-xl mb-4'>About The Tool:</h2>
-      <p className='my-4 text-sm'>Bad Raffle is responsible for...</p>
+      <p className='my-4 text-sm'>
+        Bad Raffle is responsible for running weighted raffles/giveaways in web3. It weighs the entries of a
+        connected wallet, based on it&apos;s held assets.
+      </p>
 
       <Link
         href='/tool'
