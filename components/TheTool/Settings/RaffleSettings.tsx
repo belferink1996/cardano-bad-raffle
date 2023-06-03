@@ -23,6 +23,7 @@ export interface RaffleSettingsType {
     image: string
   }
   amount: number
+  numOfWinners: number
   endAt: {
     amount: number
     period: EndAtPeriod
@@ -48,6 +49,7 @@ export const INIT_RAFFLE_SETTINGS: RaffleSettingsType = {
     image: '',
   },
   amount: 0,
+  numOfWinners: 0,
   endAt: {
     amount: 0,
     period: HOURS,
@@ -107,7 +109,6 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
           toast.error(error.message)
           resolve('')
         },
-
         () => {
           toast.dismiss()
           toast.success('Uploaded!')
@@ -335,6 +336,35 @@ const RaffleSettings = (props: RaffleSettingsProps) => {
       )}
 
       <div className={(disabled ? 'bg-gray-800 ' : 'bg-gray-400 ') + 'w-3/4 h-0.5 my-4 mx-auto rounded-full'} />
+
+      <h6 className={'text-sm ' + (disabled ? 'text-gray-700' : '')}>How many winners should there be?</h6>
+
+      <input
+        placeholder='Amount'
+        disabled={disabled}
+        value={raffleSettings.numOfWinners || ''}
+        onChange={(e) =>
+          setRaffleSettings((prev) => {
+            const payload = { ...prev }
+            const v = Number(e.target.value)
+
+            if (isNaN(v) || v < 0) {
+              return prev
+            }
+
+            const amountToGive = formatTokenFromChainToHuman(payload.amount, decimals)
+
+            if (v > amountToGive) {
+              payload.numOfWinners = amountToGive
+            } else {
+              payload.numOfWinners = v
+            }
+
+            return payload
+          })
+        }
+        className='w-full my-0.5 p-3 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 disabled:placeholder:text-gray-700 rounded-lg bg-gray-900 border border-gray-700 text-sm hover:bg-gray-700 hover:border-gray-500 hover:text-white hover:placeholder:text-white'
+      />
 
       <h6 className={'text-sm ' + (disabled ? 'text-gray-700' : '')}>When should the raffle end?</h6>
 

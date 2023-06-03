@@ -11,7 +11,6 @@ export interface Raffle {
 
   stakeKey: string
   isToken: boolean
-  amount: number
   token: {
     tokenId: string
     tokenName: string
@@ -22,6 +21,19 @@ export interface Raffle {
     description: string
     image: string
   }
+  amount: number
+  numOfWinners: number
+  entries: {
+    stakeKey: string
+    points: number
+  }[]
+  winners: {
+    stakeKey: string
+    address: string
+    amount: number
+  }[]
+  txDeposit?: string
+  txsWithdrawn?: string[]
   endAt: number
 
   delegatorSettings: DelegatorSettingsType

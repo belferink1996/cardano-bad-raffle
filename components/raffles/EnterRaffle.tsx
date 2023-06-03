@@ -274,15 +274,30 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
         }
 
         const collection = firestore.collection(RAFFLES_DB_PATH)
-
         const { FieldValue } = firebase.firestore
 
-        const incrementPoints = FieldValue.increment(holderPoints.points)
+        const foundEntry = raffle.entries?.find((obj) => obj.stakeKey === holderPoints.stakeKey)
+
+        let points = holderPoints.points
+
+        if (foundEntry) {
+          await collection.doc(raffle?.id).update({
+            entries: FieldValue.arrayRemove(foundEntry),
+          })
+
+          points += foundEntry.points
+        }
+
+        const arrayUnionEntries = FieldValue.arrayUnion({
+          stakeKey: holderPoints.stakeKey,
+          points,
+        })
+
         const arrayUnionUnits = FieldValue.arrayUnion(...holderPoints.units)
 
         await collection.doc(raffle?.id).update({
-          [`entry_${holderPoints.stakeKey}`]: incrementPoints,
           usedUnits: arrayUnionUnits,
+          entries: arrayUnionEntries,
         })
 
         if (holderPoints.withFungible) {
@@ -322,7 +337,7 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
   }, [raffle, holderPoints])
 
   return (
-    <div className='w-[80vw] md:w-[690px] mx-auto'>
+    <div className='w-[80vw] md:w-[555px] mx-auto'>
       <TranscriptsViewer transcripts={transcripts} />
 
       {isSdkWrapped ? (
@@ -335,48 +350,52 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
 
       <RaffleViewer raffle={raffle} callbackTimerExpired={() => raffleExpired()} />
 
-      <div className='w-full mt-2 flex flex-wrap items-center justify-evenly'>
-        <button
-          type='button'
-          disabled={
-            (!isSdkWrapped && !connected) ||
-            (isSdkWrapped && !sdkVoterStakeKey) ||
-            !raffleActive ||
-            !holderPoints.points ||
-            loading
-          }
-          onClick={() => enterRaffle()}
-          className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
-        >
-          Enter Raffle
-        </button>
-      </div>
-
-      <div className='mt-4 flex flex-col items-center justify-center'>
-        <h6>Who can enter?</h6>
-
-        {raffle.holderSettings.map((setting) => (
-          <div key={`holderSetting-${setting.policyId}`} className='text-xs my-2'>
-            <p className='text-gray-200'>{setting.policyId}</p>
-            <p>Policy ID ({setting.weight} points)</p>
-            {setting.withRanks
-              ? setting.rankOptions.map((rankSetting) => (
-                  <p key={`rankSetting-${rankSetting.minRange}-${rankSetting.maxRange}`}>
-                    Ranks: {rankSetting.minRange}-{rankSetting.maxRange} ({rankSetting.amount} points)
-                  </p>
-                ))
-              : null}
-
-            {setting.withTraits
-              ? setting.traitOptions.map((traitSetting) => (
-                  <p key={`traitSetting-${traitSetting.category}-${traitSetting.trait}`}>
-                    Attribute: {traitSetting.category} / {traitSetting.trait} ({traitSetting.amount} points)
-                  </p>
-                ))
-              : null}
+      {raffleActive ? (
+        <Fragment>
+          <div className='w-full mt-2 flex flex-wrap items-center justify-evenly'>
+            <button
+              type='button'
+              disabled={
+                (!isSdkWrapped && !connected) ||
+                (isSdkWrapped && !sdkVoterStakeKey) ||
+                !raffleActive ||
+                !holderPoints.points ||
+                loading
+              }
+              onClick={() => enterRaffle()}
+              className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+            >
+              Enter Raffle
+            </button>
           </div>
-        ))}
-      </div>
+
+          <div className='mt-4 flex flex-col items-center justify-center'>
+            <h6>Who can enter?</h6>
+
+            {raffle.holderSettings.map((setting) => (
+              <div key={`holderSetting-${setting.policyId}`} className='text-xs my-2'>
+                <p className='text-gray-200'>{setting.policyId}</p>
+                <p>Policy ID ({setting.weight} points)</p>
+                {setting.withRanks
+                  ? setting.rankOptions.map((rankSetting) => (
+                      <p key={`rankSetting-${rankSetting.minRange}-${rankSetting.maxRange}`}>
+                        Ranks: {rankSetting.minRange}-{rankSetting.maxRange} ({rankSetting.amount} points)
+                      </p>
+                    ))
+                  : null}
+
+                {setting.withTraits
+                  ? setting.traitOptions.map((traitSetting) => (
+                      <p key={`traitSetting-${traitSetting.category}-${traitSetting.trait}`}>
+                        Attribute: {traitSetting.category} / {traitSetting.trait} ({traitSetting.amount} points)
+                      </p>
+                    ))
+                  : null}
+              </div>
+            ))}
+          </div>
+        </Fragment>
+      ) : null}
     </div>
   )
 }

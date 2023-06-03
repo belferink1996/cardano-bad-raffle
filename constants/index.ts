@@ -1,3 +1,11 @@
+export const BLOCKFROST_API_KEY = process.env.BLOCKFROST_API_KEY || ''
+
+export const APP_WALLET_MNEMONIC: string[] = Array.isArray(process.env.APP_WALLET_MNEMONIC)
+  ? process.env.APP_WALLET_MNEMONIC
+  : process.env.APP_WALLET_MNEMONIC?.split(',') || []
+
+export const APP_WALLET_ADDRESS = process.env.NEXT_PUBLIC_APP_WALLET_ADDRESS || ''
+
 export const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 export const FIREBASE_APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 export const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN

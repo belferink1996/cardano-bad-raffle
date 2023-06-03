@@ -10,7 +10,9 @@ const EnterRaffle = dynamic(async () => (await import('../../components/raffles/
 export const getServerSideProps = async (ctx: any) => {
   const raffle = await fetchRaffle(ctx.query.raffle_id, Date.now())
 
-  return { props: { raffle } }
+  const isOk = !raffle?.isToken || (raffle?.isToken && !!raffle?.txDeposit)
+
+  return { props: { raffle: isOk ? raffle : null } }
 }
 
 const Page: NextPage = (props: { raffle?: Raffle | null }) => {

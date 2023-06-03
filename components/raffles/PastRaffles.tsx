@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import { firestore, storage } from '../../utils/firebase'
 import Modal from '../layout/Modal'
 import RaffleViewer from './RaffleViewer'
 import RaffleListItem from './RaffleListItem'
 import { FetchedTimestampResponse } from '../../pages/api/timestamp'
-import { RAFFLES_DB_PATH } from '../../constants'
+import { APP_WALLET_ADDRESS, RAFFLES_DB_PATH } from '../../constants'
 import { Raffle } from '../../@types'
+import { Transaction } from '@meshsdk/core'
+import { useWallet } from '../../contexts/WalletContext'
+import { toast } from 'react-hot-toast'
 
 interface PastRafflesProps {
   stakeKey: string
@@ -15,6 +18,7 @@ interface PastRafflesProps {
 
 const PastRaffles = (props: PastRafflesProps) => {
   const { stakeKey, addTranscript } = props
+  const { wallet } = useWallet()
 
   const [loading, setLoading] = useState(false)
   const [raffles, setRaffles] = useState<Raffle[]>([])
@@ -78,6 +82,9 @@ const PastRaffles = (props: PastRafflesProps) => {
       const raffle = raffles.find((raffle) => raffle.id === raffleId) as Raffle
       const mediaUrl = raffle?.other?.image
 
+      setLoading(true)
+      toast.loading('Processing...')
+
       if (mediaUrl) {
         const fileId = mediaUrl.split('?')[0].split('%2Fbad-raffle%2F')[1]
         await storage.ref(`/tools/bad-raffle/${fileId}`).delete()
@@ -86,10 +93,62 @@ const PastRaffles = (props: PastRafflesProps) => {
       const collection = firestore.collection(RAFFLES_DB_PATH)
       await collection.doc(raffleId).delete()
 
+      toast.dismiss()
+      toast.success('Deleted raffle!')
+
       setSelectedRaffle(null)
+      setLoading(false)
+
       await getAndSetRaffles()
     },
     [raffles, getAndSetRaffles]
+  )
+
+  const clickDeposit = useCallback(
+    async (raffleId: string) => {
+      const raffle = raffles.find((raffle) => raffle.id === raffleId) as Raffle
+
+      if (!raffle) {
+        toast.error('Unexpected error!')
+        return
+      }
+
+      setLoading(true)
+      toast.loading('Processing...')
+
+      try {
+        const tx = new Transaction({ initiator: wallet })
+
+        tx.sendLovelace({ address: APP_WALLET_ADDRESS }, '1000000').sendAssets({ address: APP_WALLET_ADDRESS }, [
+          {
+            unit: raffle.token.tokenId,
+            quantity: raffle.amount.toString(),
+          },
+        ])
+
+        const unsigned = await tx.build()
+        const signed = await wallet.signTx(unsigned)
+        const txHash = await wallet.submitTx(signed)
+
+        const collection = firestore.collection(RAFFLES_DB_PATH)
+        await collection.doc(raffleId).update({
+          txDeposit: txHash,
+          txsWithdrawn: [],
+        })
+
+        toast.dismiss()
+        toast.success('Sent token(s)!')
+
+        setLoading(false)
+        setSelectedRaffle(null)
+
+        await getAndSetRaffles()
+      } catch (error: any) {
+        console.error(error)
+        addTranscript('ERROR!', error.message)
+      }
+    },
+    [wallet, raffles, getAndSetRaffles]
   )
 
   if (loading) {
@@ -131,22 +190,34 @@ const PastRaffles = (props: PastRafflesProps) => {
               }}
             />
 
-            <button
-              type='button'
-              onClick={() => clickCopy(`${window.location.origin}/polls/${selectedRaffle.id}`)}
-              className='grow m-1 mt-2 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
-            >
-              {isCopied ? 'Copied 👍' : 'Copy Raffle URL'}
-            </button>
-
             {selectedRaffle.active ? (
-              <button
-                type='button'
-                onClick={() => clickDelete(selectedRaffle.id)}
-                className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-red-900 hover:bg-red-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-red-700 hover:border-red-700 hover:cursor-pointer'
-              >
-                Delete Raffle
-              </button>
+              <Fragment>
+                {selectedRaffle.isToken && !selectedRaffle.txDeposit ? (
+                  <button
+                    type='button'
+                    onClick={() => clickDeposit(selectedRaffle.id)}
+                    className='grow m-1 mt-2 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+                  >
+                    Deposit required token{selectedRaffle.amount > 1 ? 's' : ''}
+                  </button>
+                ) : (
+                  <button
+                    type='button'
+                    onClick={() => clickCopy(`${window.location.origin}/raffles/${selectedRaffle.id}`)}
+                    className='grow m-1 mt-2 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+                  >
+                    {isCopied ? 'Copied 👍' : 'Copy Raffle URL'}
+                  </button>
+                )}
+
+                <button
+                  type='button'
+                  onClick={() => clickDelete(selectedRaffle.id)}
+                  className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-red-900 hover:bg-red-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-red-700 hover:border-red-700 hover:cursor-pointer'
+                >
+                  Delete Raffle
+                </button>
+              </Fragment>
             ) : null}
           </div>
         ) : (

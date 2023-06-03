@@ -22,6 +22,7 @@ export const getServerSideProps = async (ctx: any) => {
         id: doc.id,
       }
     })
+    .filter((item) => !item.isToken || (item.isToken && !!item.txDeposit))
     .sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0))
     .sort((a, b) => (!a.active ? b.endAt - a.endAt : a.endAt - b.endAt))
 

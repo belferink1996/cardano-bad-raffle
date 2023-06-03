@@ -9,12 +9,13 @@ import ConnectWallet from '../ConnectWallet'
 import Settings from './Settings'
 import TranscriptsViewer from '../TranscriptsViewer'
 import PastRaffles from '../raffles/PastRaffles'
-import { RAFFLES_DB_PATH } from '../../constants'
+import { APP_WALLET_ADDRESS, RAFFLES_DB_PATH } from '../../constants'
 import type { BadApiBaseToken, BadApiTokenOwners } from '../../utils/badApi'
 import type { FetchedTimestampResponse } from '../../pages/api/timestamp'
 import type { Transcript } from '../TranscriptsViewer'
 import type { SettingsType } from './Settings'
 import type { FungibleTokenHolder } from './Settings/HolderSettings'
+import { Transaction } from '@meshsdk/core'
 
 const badApi = new BadApi()
 
@@ -62,6 +63,7 @@ const TheTool = () => {
         ((settings.raffleSettings.isToken && settings.raffleSettings.token.tokenId) ||
           (!settings.raffleSettings.isToken && settings.raffleSettings.other.title)) &&
         settings.raffleSettings.amount &&
+        settings.raffleSettings.numOfWinners &&
         settings.raffleSettings.endAt.amount &&
         settings.raffleSettings.endAt.period
       ),
@@ -257,7 +259,7 @@ const TheTool = () => {
       }
 
       const {
-        data: { endAt },
+        data: { now, endAt },
       } = await axios.get<FetchedTimestampResponse>(
         `/api/timestamp?endPeriod=${settings?.raffleSettings.endAt.period}&endAmount=${settings?.raffleSettings.endAt.amount}`
       )
@@ -266,7 +268,8 @@ const TheTool = () => {
 
       const collection = firestore.collection(RAFFLES_DB_PATH)
 
-      const res = await collection.add({
+      const { id: docId } = await collection.add({
+        active: now < endAt,
         stakeKey: connectedStakeKey,
 
         ...settings.raffleSettings,
@@ -277,9 +280,41 @@ const TheTool = () => {
         holderSettings,
         fungibleTokenHolders,
         usedUnits: [],
+        entries: [],
+        winners: [],
       })
 
-      const url = `${window.location.origin}/raffles/${res.id}`
+      if (settings.raffleSettings.isToken) {
+        const lovelaces = settings.raffleSettings.numOfWinners * 1.2 * 1000000
+
+        const tx = new Transaction({ initiator: wallet })
+
+        tx.sendLovelace({ address: APP_WALLET_ADDRESS }, lovelaces.toString()).sendAssets(
+          { address: APP_WALLET_ADDRESS },
+          [
+            {
+              unit: settings.raffleSettings.token.tokenId,
+              quantity: settings.raffleSettings.amount.toString(),
+            },
+          ]
+        )
+
+        addTranscript('Building TX...')
+        const unsigned = await tx.build()
+
+        addTranscript('Awaiting signature...')
+        const signed = await wallet.signTx(unsigned)
+
+        addTranscript('Submitting TX...')
+        const txHash = await wallet.submitTx(signed)
+
+        await collection.doc(docId).update({
+          txDeposit: txHash,
+          txsWithdrawn: [],
+        })
+      }
+
+      const url = `${window.location.origin}/raffles/${docId}`
 
       addTranscript('Published! Share this link with your community:', url)
       setRaffleUrl(url)
@@ -296,7 +331,7 @@ const TheTool = () => {
     }
 
     setLoading(false)
-  }, [connectedStakeKey, settings])
+  }, [wallet, connectedStakeKey, settings])
 
   const [isCopied, setIsCopied] = useState(false)
 
