@@ -73,7 +73,7 @@ const RaffleViewer = (props: RaffleViewerProps) => {
           </tbody>
         </table>
       ) : !raffle.active && !raffle.winners.length ? (
-        <div className='mx-auto mt-2 text-center'>Pending winner{raffle.numOfWinners > 1 ? 's' : ''}...</div>
+        <div className='mx-auto mt-2 text-center'>Winner{raffle.numOfWinners > 1 ? 's' : ''} pending...</div>
       ) : !raffle.active && raffle.winners.length ? (
         <div className='mx-auto mt-2 text-center'>
           Winner{raffle.winners.length > 1 ? 's' : ''}:
