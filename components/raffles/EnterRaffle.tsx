@@ -348,7 +348,7 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
         </div>
       )}
 
-      <RaffleViewer raffle={raffle} callbackTimerExpired={() => raffleExpired()} />
+      <RaffleViewer raffle={{ ...raffle, active: raffleActive }} callbackTimerExpired={() => raffleExpired()} />
 
       {raffleActive ? (
         <Fragment>
