@@ -15,7 +15,7 @@ const Modal = (props: ModalProps) => {
 
   useEffect(() => {
     if (!!open) {
-      window.scrollTo({ top: 0 })
+      // window.scrollTo({ top: 0 })
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''

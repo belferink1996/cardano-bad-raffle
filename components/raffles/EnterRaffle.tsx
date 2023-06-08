@@ -17,8 +17,8 @@ import type { HolderSettingsType } from '../TheTool/Settings/HolderSettings'
 
 const badApi = new BadApi()
 
-const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterStakeKey?: string }) => {
-  const { raffle, isSdkWrapped, sdkVoterStakeKey } = props
+const EnterRaffle = (props: { raffle: Raffle }) => {
+  const { raffle } = props
   const { connected, wallet } = useWallet()
 
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
@@ -61,13 +61,13 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
   useEffect(() => {
     if (!raffleActive) {
       raffleExpired()
-    } else if (raffleActive && !isSdkWrapped) {
+    } else if (raffleActive) {
       addTranscript(
         'Please connect your wallet.',
         'Your wallet will be scanned to verify your eligibility & weight'
       )
     }
-  }, [raffleActive, raffleExpired, isSdkWrapped])
+  }, [raffleActive, raffleExpired])
 
   const processBalances = useCallback(
     async (stakeKey: string) => {
@@ -224,36 +224,10 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
     setLoading(false)
   }, [wallet, processBalances])
 
-  const loadWalletFromSdk = useCallback(async () => {
-    setLoading(true)
-    toast.loading('Processing...')
-
-    try {
-      addTranscript('Connected', sdkVoterStakeKey)
-
-      await processBalances(sdkVoterStakeKey as string)
-    } catch (error: any) {
-      console.error(error)
-      const errMsg = error?.response?.data || error?.message || error?.toString() || 'UNKNOWN ERROR'
-
-      toast.dismiss()
-      toast.error('Woopsies!')
-      addTranscript('Woopsies!', errMsg)
-    }
-
-    setLoading(false)
-  }, [sdkVoterStakeKey, processBalances])
-
   useEffect(() => {
-    if (raffleActive && !loading) {
-      if (isSdkWrapped) {
-        loadWalletFromSdk()
-      } else if (connected) {
-        loadWallet()
-      }
-    }
+    if (raffleActive && connected && !loading) loadWallet()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [raffleActive, connected, loadWallet, isSdkWrapped, loadWalletFromSdk])
+  }, [raffleActive, connected, loadWallet])
 
   const enterRaffle = useCallback(async () => {
     if (raffle && holderPoints.points) {
@@ -338,38 +312,13 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
 
   return (
     <div className='w-[80vw] md:w-[555px] mx-auto'>
-      <TranscriptsViewer transcripts={transcripts} />
-
-      {isSdkWrapped ? (
-        <div className='mb-2' />
-      ) : (
-        <div className='w-full mb-4 flex flex-wrap items-center justify-evenly'>
-          <ConnectWallet disabled={!raffleActive} disableTokenGate addTranscript={addTranscript} />
-        </div>
-      )}
-
       <RaffleViewer raffle={{ ...raffle, active: raffleActive }} callbackTimerExpired={() => raffleExpired()} />
 
       {raffleActive ? (
-        <Fragment>
-          <div className='w-full mt-2 flex flex-wrap items-center justify-evenly'>
-            <button
-              type='button'
-              disabled={
-                (!isSdkWrapped && !connected) ||
-                (isSdkWrapped && !sdkVoterStakeKey) ||
-                !raffleActive ||
-                !holderPoints.points ||
-                loading
-              }
-              onClick={() => enterRaffle()}
-              className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
-            >
-              Enter Raffle
-            </button>
-          </div>
+        <div className='mt-2'>
+          <TranscriptsViewer transcripts={transcripts} />
 
-          <div className='mt-4 flex flex-col items-center justify-center'>
+          <div className='my-2 flex flex-col items-center justify-center'>
             <h6>Who can enter?</h6>
 
             {raffle.holderSettings.map((setting) => (
@@ -394,7 +343,24 @@ const EnterRaffle = (props: { raffle: Raffle; isSdkWrapped?: boolean; sdkVoterSt
               </div>
             ))}
           </div>
-        </Fragment>
+
+          {!connected ? (
+            <div className='w-full flex flex-wrap items-center justify-evenly'>
+              <ConnectWallet disabled={!raffleActive} disableTokenGate addTranscript={addTranscript} />
+            </div>
+          ) : (
+            <div className='w-full flex flex-col flex-wrap items-center justify-evenly'>
+              <button
+                type='button'
+                disabled={!connected || !raffleActive || !holderPoints.points || loading}
+                onClick={() => enterRaffle()}
+                className='w-full m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+              >
+                Enter Raffle
+              </button>
+            </div>
+          )}
+        </div>
       ) : null}
     </div>
   )

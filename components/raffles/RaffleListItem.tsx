@@ -38,7 +38,7 @@ const RaffleListItem = (props: RaffleListItemProps) => {
         <img
           src={image}
           alt=''
-          className='w-[250px] sm:w-[350px] mt-2 object-contain rounded-lg border border-gray-700'
+          className='w-[220px] h-[220px] sm:w-[330px] sm:h-[330px] mt-2 object-contain rounded-lg border border-gray-700'
         />
       ) : null}
     </div>
