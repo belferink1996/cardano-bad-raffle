@@ -14,6 +14,8 @@ import type { BadApiRankedToken } from '../../utils/badApi'
 import type { FetchedTimestampResponse } from '../../pages/api/timestamp'
 import type { Transcript } from '../TranscriptsViewer'
 import type { HolderSettingsType } from '../TheTool/Settings/HolderSettings'
+import Link from 'next/link'
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid'
 
 const badApi = new BadApi()
 
@@ -323,7 +325,16 @@ const EnterRaffle = (props: { raffle: Raffle }) => {
 
             {raffle.holderSettings.map((setting) => (
               <div key={`holderSetting-${setting.policyId}`} className='text-xs my-2'>
-                <p className='text-gray-200'>{setting.policyId}</p>
+                <Link
+                  href={`https://jpg.store/collection/${setting.policyId}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='flex items-center text-gray-200 hover:text-blue-400 hover:underline'
+                >
+                  {setting.policyId}
+                  <ArrowTopRightOnSquareIcon className='w-4 h-4 ml-1 text-blue-400' />
+                </Link>
+
                 <p>Policy ID ({setting.weight} points)</p>
                 {setting.withRanks
                   ? setting.rankOptions.map((rankSetting) => (
