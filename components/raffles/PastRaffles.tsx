@@ -193,13 +193,22 @@ const PastRaffles = (props: PastRafflesProps) => {
             {selectedRaffle.active ? (
               <Fragment>
                 {selectedRaffle.isToken && !selectedRaffle.txDeposit ? (
-                  <button
-                    type='button'
-                    onClick={() => clickDeposit(selectedRaffle.id)}
-                    className='grow m-1 mt-2 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
-                  >
-                    Deposit required token{selectedRaffle.amount > 1 ? 's' : ''}
-                  </button>
+                  <Fragment>
+                    <button
+                      type='button'
+                      onClick={() => clickDeposit(selectedRaffle.id)}
+                      className='grow m-1 mt-2 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
+                    >
+                      Deposit required token{selectedRaffle.amount > 1 ? 's' : ''}
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => clickDelete(selectedRaffle.id)}
+                      className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-red-900 hover:bg-red-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-red-700 hover:border-red-700 hover:cursor-pointer'
+                    >
+                      Delete Raffle
+                    </button>
+                  </Fragment>
                 ) : (
                   <button
                     type='button'
@@ -209,14 +218,6 @@ const PastRaffles = (props: PastRafflesProps) => {
                     {isCopied ? 'Copied 👍' : 'Copy Raffle URL'}
                   </button>
                 )}
-
-                <button
-                  type='button'
-                  onClick={() => clickDelete(selectedRaffle.id)}
-                  className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-red-900 hover:bg-red-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-red-700 hover:border-red-700 hover:cursor-pointer'
-                >
-                  Delete Raffle
-                </button>
               </Fragment>
             ) : null}
           </div>
