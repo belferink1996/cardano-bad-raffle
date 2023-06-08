@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useState, useContext, useMemo, useEffect, ReactNode } from 'react'
 import { BrowserWallet, Wallet } from '@meshsdk/core'
+import BadApi, { BadApiBaseToken } from '../utils/badApi'
 
 type ConnectFunc = (
   walletName: string,
@@ -8,24 +9,29 @@ type ConnectFunc = (
   callback: (mainStr: string, subStr?: string) => void
 ) => Promise<void>
 
+interface PopulatedWallet {
+  stakeKey: string
+  hasBadKey: boolean
+  poolId: string
+  tokens: BadApiBaseToken[]
+}
+
 const ctxInit: {
   availableWallets: Wallet[]
   connectWallet: ConnectFunc
   connecting: boolean
   connected: boolean
   connectedName: string
-  hasNoKey: boolean
-  numOfKeys: number
   wallet: BrowserWallet
+  populatedWallet: PopulatedWallet
 } = {
   availableWallets: [],
   connectWallet: async () => {},
   connecting: false,
   connected: false,
   connectedName: '',
-  hasNoKey: false,
-  numOfKeys: 0,
   wallet: {} as BrowserWallet,
+  populatedWallet: {} as PopulatedWallet,
 }
 
 const WalletContext = createContext(ctxInit)
@@ -44,9 +50,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [connecting, setConnecting] = useState(ctxInit.connecting)
   const [connected, setConnected] = useState(ctxInit.connected)
   const [connectedName, setConnectedName] = useState(ctxInit.connectedName)
-  const [hasNoKey, setHasNoKey] = useState(ctxInit.hasNoKey)
-  const [numOfKeys, setNumOfkeys] = useState(ctxInit.numOfKeys)
   const [wallet, setWallet] = useState<BrowserWallet>(ctxInit.wallet)
+  const [populatedWallet, setPopulatedWallet] = useState<PopulatedWallet>(ctxInit.populatedWallet)
 
   const connectWallet: ConnectFunc = async (_walletName, _disableTokenGate, _cb) => {
     if (connecting) return
@@ -55,44 +60,54 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
       const _wallet = await BrowserWallet.enable(_walletName)
 
-      if (_wallet) {
+      if (!_wallet) {
+        _cb('Wallet not defined')
+      } else {
         const netId = await _wallet.getNetworkId()
         // 0 = testnet
         // 1 = mainnet
 
-        if (netId) {
-          const pIds = await _wallet.getPolicyIds()
+        if (!netId) {
+          _cb("Wallet isn't connected to mainnet")
+        } else {
+          const stakeKeys = await _wallet.getRewardAddresses()
+          const stakeKey = stakeKeys[0]
 
-          // Bad Key Policy ID
-          if (pIds.includes('80e3ccc66f4dfeff6bc7d906eb166a984a1fc6d314e33721ad6add14')) {
-            const keys = await _wallet.getPolicyIdAssets(
-              '80e3ccc66f4dfeff6bc7d906eb166a984a1fc6d314e33721ad6add14'
-            )
+          const badApi = new BadApi()
+          const { poolId, tokens } = await badApi.wallet.getData(stakeKey, {
+            withStakePool: true,
+            withTokens: true,
+          })
 
-            setHasNoKey(false)
-            setNumOfkeys(keys.length)
-            setWallet(_wallet)
+          const _populatedWallet = {
+            stakeKey,
+            hasBadKey: !!tokens?.find(
+              ({ tokenId }) => tokenId.indexOf('80e3ccc66f4dfeff6bc7d906eb166a984a1fc6d314e33721ad6add14') == 0
+            ),
+            poolId: poolId as string,
+            tokens: tokens as BadApiBaseToken[],
+          }
+
+          if (_populatedWallet.hasBadKey) {
             setConnected(true)
             setConnectedName(_walletName)
+            setWallet(_wallet)
+            setPopulatedWallet(_populatedWallet)
           } else {
-            setHasNoKey(true)
-            setNumOfkeys(0)
             if (_disableTokenGate) {
-              setWallet(_wallet)
               setConnected(true)
               setConnectedName(_walletName)
+              setWallet(_wallet)
+              setPopulatedWallet(_populatedWallet)
             } else {
-              setWallet(ctxInit.wallet)
               setConnected(ctxInit.connected)
               setConnectedName(ctxInit.connectedName)
+              setWallet(ctxInit.wallet)
+              setPopulatedWallet(ctxInit.populatedWallet)
               _cb("Wallet doesn't have a Bad Key 🔐", 'https://jpg.store/collection/badkey')
             }
           }
-        } else {
-          _cb("Wallet isn't connected to mainnet")
         }
-      } else {
-        _cb('Wallet not defined')
       }
     } catch (error) {
       console.error(error)
@@ -108,11 +123,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       connecting,
       connected,
       connectedName,
-      hasNoKey,
-      numOfKeys,
       wallet,
+      populatedWallet,
     }),
-    [availableWallets, connecting, connected, hasNoKey, numOfKeys, wallet]
+    [availableWallets, connecting, connected, wallet, populatedWallet]
   )
 
   return <WalletContext.Provider value={memoedValue}>{children}</WalletContext.Provider>

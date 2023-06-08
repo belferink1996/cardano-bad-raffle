@@ -20,7 +20,7 @@ import { Transaction } from '@meshsdk/core'
 const badApi = new BadApi()
 
 const TheTool = () => {
-  const { connected, hasNoKey, wallet } = useWallet()
+  const { connected, populatedWallet, wallet } = useWallet()
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
 
   const addTranscript = (msg: string, key?: string) => {
@@ -75,7 +75,7 @@ const TheTool = () => {
       setLoading(true)
       toast.loading('Processing...')
 
-      if (hasNoKey) {
+      if (!populatedWallet.hasBadKey) {
         toast.dismiss()
         toast.error('Woopsies!')
         setLoading(true)
@@ -102,7 +102,7 @@ const TheTool = () => {
     }
 
     setLoading(false)
-  }, [wallet, connected, hasNoKey])
+  }, [wallet, connected, populatedWallet])
 
   useEffect(() => {
     if (!loading) loadWallet()
@@ -379,7 +379,9 @@ const TheTool = () => {
 
           <button
             type='button'
-            disabled={!connected || hasNoKey || !isUserSettingsExist() || rafflePublished || loading}
+            disabled={
+              !connected || !populatedWallet.hasBadKey || !isUserSettingsExist() || rafflePublished || loading
+            }
             onClick={clickPublish}
             className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
           >
@@ -388,7 +390,7 @@ const TheTool = () => {
 
           <button
             type='button'
-            disabled={!connected || hasNoKey || !rafflePublished || loading}
+            disabled={!connected || !populatedWallet.hasBadKey || !rafflePublished || loading}
             onClick={() => clickCopy(raffleUrl)}
             className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-green-900 hover:bg-green-700 bg-opacity-50 hover:bg-opacity-50 hover:text-gray-200 disabled:border border hover:border border-green-700 hover:border-green-700 hover:cursor-pointer'
           >
@@ -399,7 +401,7 @@ const TheTool = () => {
         <div className='flex'>
           <button
             type='button'
-            disabled={!connected || hasNoKey || loading}
+            disabled={!connected || !populatedWallet.hasBadKey || loading}
             onClick={() => setShowPastRaffles((prev) => !prev)}
             className='grow m-1 p-4 disabled:cursor-not-allowed disabled:bg-gray-900 disabled:bg-opacity-50 disabled:border-gray-800 disabled:text-gray-700 rounded-xl bg-gray-900 hover:bg-gray-700 hover:text-gray-200 disabled:border border hover:border border-gray-700 hover:border-gray-500 hover:cursor-pointer'
           >
@@ -412,7 +414,7 @@ const TheTool = () => {
         <PastRaffles stakeKey={connectedStakeKey} addTranscript={addTranscript} />
       ) : (
         <Settings
-          disabled={!connected || hasNoKey || rafflePublished || loading}
+          disabled={!connected || !populatedWallet.hasBadKey || rafflePublished || loading}
           defaultSettings={settings}
           callback={(payload) => setSettings(payload)}
         />
