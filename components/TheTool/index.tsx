@@ -335,7 +335,20 @@ const TheTool = () => {
 
       toast.dismiss()
       toast.error('Woopsies!')
-      addTranscript('ERROR', errMsg)
+
+      if (errMsg.indexOf('Not enough ADA leftover to include non-ADA assets in a change address') !== -1) {
+        addTranscript(
+          'ERROR',
+          'TX build failed: your UTXOs are clogged, please send all your ADA to yourself, together with the selected tokens.'
+        )
+      } else if (error?.message?.indexOf('UTxO Balance Insufficient') !== -1) {
+        addTranscript(
+          'ERROR',
+          'TX build failed: not enough ADA to process TX, please add ADA to your wallet, then try again.'
+        )
+      } else {
+        addTranscript('ERROR', errMsg)
+      }
     }
 
     setLoading(false)
