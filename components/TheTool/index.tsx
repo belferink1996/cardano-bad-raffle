@@ -268,7 +268,8 @@ const TheTool = () => {
 
       const collection = firestore.collection(RAFFLES_DB_PATH)
 
-      const { id: docId } = await collection.add({
+      let docId = ''
+      const payload = {
         active: now < endAt,
         stakeKey: connectedStakeKey,
 
@@ -282,7 +283,7 @@ const TheTool = () => {
         usedUnits: [],
         entries: [],
         winners: [],
-      })
+      }
 
       if (settings.raffleSettings.isToken) {
         const lovelaces = settings.raffleSettings.numOfWinners * 1.2 * 1000000
@@ -308,10 +309,17 @@ const TheTool = () => {
         addTranscript('Submitting TX...')
         const txHash = await wallet.submitTx(signed)
 
-        await collection.doc(docId).update({
+        const { id } = await collection.add({
+          ...payload,
           txDeposit: txHash,
           txsWithdrawn: [],
         })
+
+        docId = id
+      } else {
+        const { id } = await collection.add(payload)
+
+        docId = id
       }
 
       const url = `${window.location.origin}/raffles/${docId}`
